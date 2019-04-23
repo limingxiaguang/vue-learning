@@ -234,4 +234,204 @@ Vue.component('my-component',{
 上面示例中，子组件有两个按钮，分别实现加` 1 `和减` l `的效果， 在改变组件的` data` "`counter`" 后，通过` $emit() `再把它传递给父组件， 父组件用` v-on:increase `和` v-on:reduce `（示例使用的是语法糖）。` $emit() `方法的 ***第一个参数是自定义事件的名称*** ， 例如示例的` increase `和` reduce `,***后面的参数都是要传递的数据，可以不填或填写多个***。
 
 除了用 v-on 在组件上监听自定义事件外，也可以监昕 DOM 事件，这时可以用.native 修饰符 表示监听的是一个原生事件，监听的是该组件的根元素，示例代码如下：
+```html
 <my-component @increase="handelClick"></my-component>
+```
+#### 1.4.2  使用 v-model
+
+` Vue2.x `可以在自定义组件上使用` v-model `指令，我们先来看一个示例:
+```html
+<div id="app">
+    <p>总数：{{ total }}</p>
+    <my-component v-model="total"></my-component>
+</div>
+<script>
+    Vue.component('my-component', {
+        template: '<button @click="handelClick">+1</button>',
+        data() {
+            return {
+                counter: 0
+            }
+        },
+        methods: {
+            handelClick: function() {
+                this.counter++
+                this.$emit('input', this.counter)
+            }
+        }
+    })
+    var vm = new Vue({
+        el: '#app',
+        data() {
+            return {
+                total: 0
+            }
+        }
+    })
+</script>
+```
+组件` $emit() `的事件名是特殊的` input `，在使用组件的父级，井没有在` <my-component> `上使用` @input= "handler" `，而是直接用了` v-model `绑定的一个数据` total `。这也可以称作是一个语法糖，因为上面的示例可以间接地用自定义事件来实现：
+```html
+<div id="app">
+    <p>总数：{{ total }}</p>
+    <my-component @input="handelGetClick"></my-component>
+</div>
+<script>
+    Vue.component('my-component', {
+        template: '<button @click="handelClick">+1</button>',
+        data() {
+            return {
+                counter: 0
+            }
+        },
+        methods: {
+            handelClick: function() {
+                this.counter++
+                this.$emit('input', this.counter)
+            }
+        }
+    })
+    var vm = new Vue({
+        el: '#app',
+        data() {
+            return {
+                total: 0
+            }
+        },
+        methods： {
+            handelGetClick: function(total) {
+                return this.total = total
+            }
+        }
+    })
+</script>
+```
+
+v-model 还可以用来创建自定义的表单输入组件， 进行数据双向绑定，例如：
+```html
+<div id="app">
+    <p>总数：{{ total }}</p>
+    <my-component v-model="total"></my-component>
+    <button @click="handleReduce">-1</button>
+</div>
+<script>
+    Vue.component('my-component', {
+        props: ['value'],
+        template: '<input :value="value" @input="updateValue">+1</input>',
+        methods: {
+            updateValue: function(event) {
+                this.$emit('input', event.target.value)
+            }
+        }
+    })
+    var vm = new Vue({
+        el: '#app',
+        data() {
+            return {
+                total: 0
+            }
+        },
+        methods: {
+            handleReduce: function() {
+                this.total--
+            }
+        }
+    })
+</script>
+```
+
+实现这样一个具有双向绑定的` v-model `组件要满足下面两个要求:
+
+- 接收一个Value属性
+- 在有新的Value时触发input事件
+
+#### 1.4.3 非父子组件通信
+
+在实际业务中，除了父子组件通信外，还有很多非父子组件通信的场景，非父子组件一般有两种，兄弟组件和跨多级组件。为了更加彻底地了解 ` Vue.js 2.x `中的通信方法，我们先来看一下在` Vue.js l.x `中是如何实现的，这样便于我们了解` Vue.js`的设计思想。 
+
+**父链**
+
+在子组件中，使用` this.$parent `可以直接访问该组件的父实例或组件，父组件也可以通过` this.$children `访问它所有的子组件，而且可以递归向上或向下无线访问， 直到根实例或最内层的组件。示例代码如下：
+```html
+<div id="app">
+    {{message}}
+    <component-a></component-a>
+</div>
+<script>
+    Vue.component('component-a',{
+        template: '<button @click="handellick">通过父链直接修改父链的数据</button>',
+        methods: {
+            hendelClick: function() {
+                this.$parent.message = '来自组件component-a的内容'
+                // 访问到父链后，可以做任何操作，比如直接修改数据
+            }
+        }
+    })
+    var vm  = new Vue({
+        el: '#app',
+        data() {
+            return {
+                message: ''
+            }
+        }
+    })
+</script>
+```
+> 尽管` Vue `允许这样操作，但在业务中， 子组件应该尽可能地避免依赖父组件的数据，更不应 该去主动修改它的数据，因为这样使得父子组件紧藕合，只看父组件，很难理解父组件的状态，因 为它可能被任意组件修改，理想情况下，只有组件自己能修改它的状态。父子组件最好还是通过` props `和` $emit `来通信。
+
+**子组件索引**
+
+当子组件较多时， 通过` this.$children `来一一遍历出我们需要的一个组件实例是比较困难的， 尤其是组件动态渲染时，它们的序列是不固定的。` Vue `提供了子组件索引的方法，用特殊的属性` ref `来为子组件指定一个索引名称，示例代码如下：
+
+```html
+<div id="app">
+    <button @click="handekRef">通过ref获子组件的内容</button>
+    <component-a ref="comA"></component-a>
+</div>
+<script>
+    Vue.component('coponent-a', {
+        template: '<div>子组件</div>'，
+        data() {
+            return {
+                message: '子组件内容'
+            }
+        }
+    })
+    var vm = new Vue({
+        el: '#app',
+        methods: {
+            handekRef: function() {
+                var msg = this.$refs.comA.message
+                console.log(msg)
+                // 通过$refs 来访问指定的实例 
+            }
+        }
+    })
+</script>
+```
+在父组件模板中，子组件标签上使用` ref `指定一个名称，井在父组件内通过` this.$refs `来访问指 定名称的子组件。 
+
+> ` $refs `只在渲染完成后才填充，并且它是非响应式的． 它仅仅作为一个直接访问子组件的应急方案，应当避免在模板或计算属性中` $refs `。
+
+与` Vue l.x `不同的是，` Vue 2.x `将` v-el `和` v-ref `合并为了` ref `,`  Vue `会自动去判断是普通标签还是组件。可以尝试补全下面的代码，分别打印出两个` ref `看看都是什么：
+```html
+<div id="app">
+    <p ref="p">内容</p>
+    <child-component ref="child"></child-component>
+</div>
+<script>
+    Vue.component('child-component', {
+        template: '<div>child</div>'
+    })
+    var vm = new Vue({
+        el: '#app',
+       mounted: function() {
+           var p = this.$refs.p
+           var child = this.$refs.child
+           console.log(p, child)
+       }
+    })
+</script>
+```
+打印结果：
+![](https://ws1.sinaimg.cn/large/006rYhJMgy1g2chzspl5qj30oz078q36.jpg)
