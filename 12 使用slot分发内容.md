@@ -228,8 +228,8 @@
     new Vue({
         el: '#app',
         data() {
-            reeturn {
-                books[
+            return {
+                books: [
                     {name:'《Vue. js 实战》'},
                     {name:'《JavaScript 语言精粹》'},
                     {name:'《JavaScript 高级程序设计》'}
