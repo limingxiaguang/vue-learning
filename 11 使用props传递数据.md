@@ -434,4 +434,5 @@ v-model 还可以用来创建自定义的表单输入组件， 进行数据双�
 </script>
 ```
 打印结果：
+
 ![](https://ws1.sinaimg.cn/large/006rYhJMgy1g2chzspl5qj30oz078q36.jpg)
